@@ -1,0 +1,521 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bankroll Master Brasil - V4.2 Ultra</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700;900&display=swap');
+        body { background-color: #f0f4f8; font-family: 'Inter', sans-serif; color: #1e293b; }
+        .card { background: white; border-radius: 20px; box-shadow: 0 10px 25px -5px rgba(0,0,0,0.05); border: 1px solid #e2e8f0; transition: transform 0.2s ease; }
+        .card:hover { transform: translateY(-2px); }
+        .input-field { width: 100%; padding: 12px; border: 2px solid #f1f5f9; border-radius: 12px; font-size: 0.95rem; background: #f8fafc; transition: all 0.2s; }
+        .input-field:focus { border-color: #10b981; background: white; outline: none; box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.1); }
+        .btn { padding: 12px 20px; border-radius: 12px; font-weight: 700; transition: all 0.2s; display: inline-flex; align-items: center; justify-content: center; gap: 10px; cursor: pointer; border: none; }
+        .btn-green { background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white; }
+        .btn-green:hover { filter: brightness(1.1); box-shadow: 0 8px 20px rgba(16, 185, 129, 0.3); }
+        .btn-tab { padding: 8px 16px; border-radius: 8px; font-size: 12px; font-weight: 800; color: #64748b; background: #f1f5f9; }
+        .btn-tab.active { background: #1e293b; color: white; }
+        
+        /* Status Badges */
+        .status-green { background: #dcfce7; color: #15803d; padding: 6px 12px; border-radius: 8px; font-size: 11px; font-weight: 900; }
+        .status-half-green { background: #f0fdf4; color: #16a34a; border: 1px dashed #bbf7d0; padding: 5px 11px; border-radius: 8px; font-size: 11px; font-weight: 900; }
+        .status-red { background: #fee2e2; color: #b91c1c; padding: 6px 12px; border-radius: 8px; font-size: 11px; font-weight: 900; }
+        .status-half-red { background: #fff1f2; color: #e11d48; border: 1px dashed #fecdd3; padding: 5px 11px; border-radius: 8px; font-size: 11px; font-weight: 900; }
+        .status-void { background: #f1f5f9; color: #64748b; padding: 6px 12px; border-radius: 8px; font-size: 11px; font-weight: 900; }
+        
+        .streak-badge { animation: pulse 2s infinite; }
+        @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.7; } 100% { opacity: 1; } }
+    </style>
+</head>
+<body class="p-4 md:p-6 lg:p-10">
+    <div class="max-w-7xl mx-auto">
+        
+        <!-- HEADER -->
+        <header class="flex flex-col md:flex-row justify-between items-start md:items-center mb-10 gap-6">
+            <div>
+                <div class="flex items-center gap-3">
+                    <div class="bg-emerald-500 text-white w-12 h-12 rounded-2xl flex items-center justify-center text-2xl shadow-lg shadow-emerald-200">
+                        <i class="fa-solid fa-bolt"></i>
+                    </div>
+                    <div>
+                        <h1 class="text-3xl font-black tracking-tight">BANKROLL <span class="text-emerald-500">ULTRA</span></h1>
+                        <p class="text-slate-400 font-bold text-xs uppercase tracking-widest">Professional Analytics • V4.2 BR</p>
+                    </div>
+                </div>
+            </div>
+            <div class="flex flex-wrap gap-2">
+                <button onclick="ajustarBanca('deposito')" class="btn bg-white border-2 border-slate-100 text-slate-600 text-xs hover:border-emerald-200">
+                    <i class="fa-solid fa-plus text-emerald-500"></i> DEPÓSITO
+                </button>
+                <button onclick="ajustarBanca('levantamento')" class="btn bg-white border-2 border-slate-100 text-slate-600 text-xs hover:border-orange-200">
+                    <i class="fa-solid fa-minus text-orange-500"></i> SAQUE
+                </button>
+                <div class="h-10 w-[1px] bg-slate-200 mx-2 hidden md:block"></div>
+                <button onclick="exportarDados()" class="btn bg-slate-800 text-white text-xs">
+                    <i class="fa-solid fa-cloud-arrow-down"></i> BACKUP
+                </button>
+            </div>
+        </header>
+
+        <!-- MAIN STATS -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-10">
+            <div class="card p-6 bg-emerald-600 text-white relative overflow-hidden">
+                <div class="relative z-10">
+                    <p class="text-xs font-black opacity-70 uppercase tracking-widest mb-1">Banca Atual</p>
+                    <h2 id="dashBanca" class="text-4xl font-black tracking-tighter">R$ 0,00</h2>
+                    <div class="mt-4 flex items-center gap-2 text-[10px] font-bold">
+                        <span class="bg-black/20 px-2 py-1 rounded">INICIAL: <span id="valInicial">R$ 0,00</span></span>
+                        <span id="streakDisplay" class="bg-white/20 px-2 py-1 rounded streak-badge">STREAK: 0</span>
+                    </div>
+                </div>
+                <i class="fa-solid fa-wallet absolute -right-4 -bottom-4 text-8xl opacity-10"></i>
+            </div>
+
+            <div class="card p-6 border-l-8 border-emerald-500">
+                <p class="text-xs font-black text-slate-400 uppercase tracking-widest mb-1">Lucro Total (P/L)</p>
+                <h2 id="dashLucro" class="text-3xl font-black text-emerald-600">R$ 0,00</h2>
+                <div class="mt-4 h-2 bg-slate-100 rounded-full overflow-hidden">
+                    <div id="metaBar" class="h-full bg-emerald-500 transition-all duration-500" style="width: 0%"></div>
+                </div>
+                <p id="metaTexto" class="text-[10px] font-bold text-slate-500 mt-2 uppercase">Meta: 0% Concluída</p>
+            </div>
+
+            <div class="card p-6 border-l-8 border-indigo-500">
+                <p class="text-xs font-black text-slate-400 uppercase tracking-widest mb-1">ROI / Yield</p>
+                <h2 id="dashROI" class="text-3xl font-black text-indigo-600">0.0%</h2>
+                <p id="volumeTotal" class="mt-4 text-[10px] font-bold text-slate-400 uppercase">Volume: R$ 0,00</p>
+            </div>
+
+            <div class="card p-6 border-l-8 border-amber-500">
+                <p class="text-xs font-black text-slate-400 uppercase tracking-widest mb-1">Assertividade</p>
+                <h2 id="dashWinRate" class="text-3xl font-black text-amber-500">0%</h2>
+                <p id="dashContagem" class="mt-4 text-[10px] font-bold text-slate-400 uppercase">0 G / 0 R</p>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
+            
+            <!-- SIDEBAR -->
+            <div class="lg:col-span-4 space-y-6">
+                <div class="flex gap-2 mb-4">
+                    <button id="tabApostaBtn" onclick="switchTab('aposta')" class="btn-tab active">REGISTRAR</button>
+                    <button id="tabCalcBtn" onclick="switchTab('calc')" class="btn-tab">CALCULADORA</button>
+                </div>
+
+                <!-- FORM APOSTA -->
+                <div id="tabAposta" class="card p-6">
+                    <form id="formAposta" class="space-y-4" onsubmit="adicionarAposta(event)">
+                        <div class="grid grid-cols-1 gap-4">
+                            <div>
+                                <label class="text-[10px] font-black text-slate-400 uppercase mb-1 block">Jogo (Evento)</label>
+                                <input type="text" id="inputEvento" placeholder="Real Madrid vs Barcelona" class="input-field" required>
+                            </div>
+                            <div>
+                                <label class="text-[10px] font-black text-slate-400 uppercase mb-1 block">Mercado</label>
+                                <input type="text" id="inputMercado" placeholder="Over 2.25 Gols" class="input-field" required>
+                            </div>
+                        </div>
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <label class="text-[10px] font-black text-slate-400 uppercase mb-1 block">Esporte</label>
+                                <select id="inputDesporto" class="input-field">
+                                    <option value="Futebol">⚽ Futebol</option>
+                                    <option value="Basquete">🏀 Basquete</option>
+                                    <option value="Tênis">🎾 Tênis</option>
+                                    <option value="MMA">🥊 MMA</option>
+                                    <option value="E-Sports">🎮 E-Sports</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="text-[10px] font-black text-slate-400 uppercase mb-1 block">Resultado</label>
+                                <select id="inputResultado" class="input-field">
+                                    <option value="win">✅ GREEN</option>
+                                    <option value="half-win">🟢 MEIO GREEN</option>
+                                    <option value="half-loss">🟠 MEIO RED</option>
+                                    <option value="loss">❌ RED</option>
+                                    <option value="void">⚪ REEMBOLSO</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <label class="text-[10px] font-black text-slate-400 uppercase mb-1 block">Cotação (Odd)</label>
+                                <input type="number" step="0.001" id="inputOdd" placeholder="1.90" class="input-field" required>
+                            </div>
+                            <div>
+                                <label class="text-[10px] font-black text-slate-400 uppercase mb-1 block">Stake (R$)</label>
+                                <input type="number" step="0.01" id="inputStake" placeholder="50.00" class="input-field" required>
+                            </div>
+                        </div>
+                        <button type="submit" class="w-full btn btn-green py-4 text-sm">
+                            SALVAR OPERAÇÃO
+                        </button>
+                    </form>
+                </div>
+
+                <!-- CALCULADORA -->
+                <div id="tabCalc" class="card p-6 hidden">
+                    <h3 class="font-black text-sm text-slate-800 uppercase mb-4">Calculadora de Dutching</h3>
+                    <div class="space-y-3">
+                        <input type="number" id="calcStakeTotal" placeholder="Investimento Total (R$)" class="input-field">
+                        <div class="grid grid-cols-2 gap-2">
+                            <input type="number" id="calcOdd1" placeholder="Odd 1" class="input-field">
+                            <input type="number" id="calcOdd2" placeholder="Odd 2" class="input-field">
+                        </div>
+                        <button onclick="calcularDutching()" class="w-full btn bg-indigo-600 text-white py-3 text-xs font-black">CALCULAR DIVISÃO</button>
+                        <div id="resDutching" class="p-3 bg-slate-50 rounded-xl text-xs font-bold text-slate-600 space-y-1 hidden"></div>
+                    </div>
+                </div>
+
+                <!-- CONFIGURAÇÕES DE BANCA -->
+                <section class="card p-6 bg-slate-900 text-white">
+                    <div class="flex justify-between items-center mb-6">
+                        <h3 class="font-black text-[10px] text-slate-400 uppercase tracking-widest">Ajustes de Conta</h3>
+                        <i class="fa-solid fa-sliders text-emerald-500"></i>
+                    </div>
+                    <div class="space-y-4">
+                        <div>
+                            <label class="text-[10px] font-bold text-slate-500 uppercase block mb-1">Banca Inicial (R$)</label>
+                            <input type="number" id="configBancaInicial" class="w-full bg-slate-800 border-none rounded-xl p-3 text-white font-bold" onchange="atualizarConfig()">
+                        </div>
+                        <div>
+                            <label class="text-[10px] font-bold text-slate-500 uppercase block mb-2">Risco p/ Unidade (%)</label>
+                            <input type="range" id="configRisco" min="0.5" max="10" step="0.5" class="w-full accent-emerald-500" oninput="atualizarConfig()">
+                            <div class="flex justify-between text-[10px] font-black mt-1 text-emerald-400">
+                                <span id="riscoVal">2%</span>
+                                <span>10%</span>
+                            </div>
+                        </div>
+                        <div class="p-4 bg-slate-800 rounded-2xl border border-slate-700 text-center">
+                            <p class="text-2xl font-black text-emerald-400" id="sugestaoStake">R$ 0,00</p>
+                            <p class="text-[9px] text-slate-500 uppercase font-black mt-1">1 Unidade Recomendada</p>
+                        </div>
+                        <div>
+                            <label class="text-[10px] font-bold text-slate-500 uppercase block mb-1">Meta Mensal (R$)</label>
+                            <input type="number" id="configMeta" class="w-full bg-slate-800 border-none rounded-xl p-3 text-white font-bold" onchange="atualizarConfig()">
+                        </div>
+                    </div>
+                </section>
+            </div>
+
+            <!-- ANALYTICS -->
+            <div class="lg:col-span-8 space-y-6">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <section class="card p-6">
+                        <div class="flex justify-between items-center mb-4">
+                            <h3 class="font-black text-xs text-slate-400 uppercase">Performance</h3>
+                            <select id="filtroTempo" class="text-[10px] font-black bg-slate-50 px-2 py-1 rounded outline-none" onchange="renderizarTudo()">
+                                <option value="tudo">Tudo</option>
+                                <option value="mes">Mês Atual</option>
+                                <option value="semana">Últimos 7 dias</option>
+                            </select>
+                        </div>
+                        <div class="h-60"><canvas id="graficoBanca"></canvas></div>
+                    </section>
+                    <section class="card p-6">
+                        <h3 class="font-black text-xs text-slate-400 uppercase mb-4">Volume por Esporte</h3>
+                        <div class="h-60 flex justify-center"><canvas id="graficoPizza"></canvas></div>
+                    </section>
+                </div>
+
+                <section class="card overflow-hidden">
+                    <div class="p-6 border-b bg-white flex justify-between items-center">
+                        <div>
+                            <h3 class="font-black text-slate-800">Histórico</h3>
+                            <p class="text-[10px] text-slate-400 font-bold uppercase" id="contadorApostas">0 OPERAÇÕES</p>
+                        </div>
+                        <button onclick="resetarSistema()" class="text-red-400 hover:text-red-600 text-xs font-black uppercase tracking-tighter">Limpar Banco</button>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left text-sm border-collapse">
+                            <thead class="bg-slate-50 text-slate-400 font-black text-[10px] uppercase border-b">
+                                <tr>
+                                    <th class="p-5">Evento / Mercado</th>
+                                    <th class="p-5">Odds</th>
+                                    <th class="p-5">Stake</th>
+                                    <th class="p-5 text-center">P&L</th>
+                                    <th class="p-5">Status</th>
+                                    <th class="p-5"></th>
+                                </tr>
+                            </thead>
+                            <tbody id="tabelaCorpo" class="divide-y divide-slate-100 bg-white"></tbody>
+                        </table>
+                    </div>
+                </section>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL DE DEPÓSITO/SAQUE -->
+    <div id="modalAjuste" class="fixed inset-0 bg-slate-900/80 hidden items-center justify-center z-50 backdrop-blur-md">
+        <div class="card p-8 w-full max-w-sm mx-4 border-none">
+            <h3 id="modalTitulo" class="text-3xl font-black mb-1">Ajuste</h3>
+            <p class="text-sm text-slate-500 mb-6 font-medium">Movimentação de caixa.</p>
+            <input type="number" id="valorAjuste" placeholder="R$ 0,00" class="input-field mb-6 text-3xl font-black py-6 text-center">
+            <div class="grid grid-cols-2 gap-4">
+                <button onclick="fecharModal()" class="btn bg-slate-100 text-slate-500 text-xs">VOLTAR</button>
+                <button id="btnConfirmarAjuste" class="btn btn-green text-xs">CONFIRMAR</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let appData = {
+            bancaInicial: 1000,
+            ajustesCaixa: 0,
+            riscoPorcentagem: 2,
+            metaLucro: 1000,
+            apostas: []
+        };
+
+        let chartBanca = null; let chartPizza = null; let tipoAjusteAtual = '';
+
+        window.onload = () => {
+            const saved = localStorage.getItem('bankroll_br_v4_2_ultra');
+            if (saved) appData = JSON.parse(saved);
+            
+            document.getElementById('configBancaInicial').value = appData.bancaInicial;
+            document.getElementById('configRisco').value = appData.riscoPorcentagem;
+            document.getElementById('riscoVal').innerText = appData.riscoPorcentagem + '%';
+            document.getElementById('configMeta').value = appData.metaLucro;
+            renderizarTudo();
+        };
+
+        function salvar() { localStorage.setItem('bankroll_br_v4_2_ultra', JSON.stringify(appData)); }
+
+        function switchTab(tab) {
+            document.getElementById('tabAposta').classList.toggle('hidden', tab !== 'aposta');
+            document.getElementById('tabCalc').classList.toggle('hidden', tab !== 'calc');
+            document.getElementById('tabApostaBtn').classList.toggle('active', tab === 'aposta');
+            document.getElementById('tabCalcBtn').classList.toggle('active', tab === 'calc');
+        }
+
+        function atualizarConfig() {
+            appData.bancaInicial = parseFloat(document.getElementById('configBancaInicial').value) || 0;
+            appData.riscoPorcentagem = parseFloat(document.getElementById('configRisco').value);
+            appData.metaLucro = parseFloat(document.getElementById('configMeta').value) || 0;
+            document.getElementById('riscoVal').innerText = appData.riscoPorcentagem + '%';
+            salvar(); renderizarTudo();
+        }
+
+        function adicionarAposta(e) {
+            e.preventDefault();
+            const aposta = {
+                id: Date.now(),
+                evento: document.getElementById('inputEvento').value,
+                mercado: document.getElementById('inputMercado').value,
+                desporto: document.getElementById('inputDesporto').value,
+                stake: parseFloat(document.getElementById('inputStake').value),
+                odd: parseFloat(document.getElementById('inputOdd').value),
+                resultado: document.getElementById('inputResultado').value,
+                data: new Date().toISOString()
+            };
+            appData.apostas.push(aposta);
+            document.getElementById('formAposta').reset();
+            salvar(); renderizarTudo();
+        }
+
+        function excluirAposta(id) {
+            appData.apostas = appData.apostas.filter(a => a.id !== id);
+            salvar(); renderizarTudo();
+        }
+
+        function ajustarBanca(tipo) {
+            tipoAjusteAtual = tipo;
+            document.getElementById('modalTitulo').innerText = tipo === 'deposito' ? 'Depósito' : 'Saque';
+            document.getElementById('modalAjuste').style.display = 'flex';
+            document.getElementById('btnConfirmarAjuste').onclick = confirmarAjuste;
+        }
+
+        function confirmarAjuste() {
+            const valor = parseFloat(document.getElementById('valorAjuste').value) || 0;
+            if (tipoAjusteAtual === 'deposito') appData.ajustesCaixa += valor;
+            else appData.ajustesCaixa -= valor;
+            fecharModal(); salvar(); renderizarTudo();
+        }
+
+        function fecharModal() {
+            document.getElementById('modalAjuste').style.display = 'none';
+            document.getElementById('valorAjuste').value = '';
+        }
+
+        function calcularMetricas() {
+            let lucroBruto = 0; let winsCount = 0; let lossCount = 0; let volume = 0;
+            let porEsporte = {}; let streak = 0; let currentType = null;
+            const filtro = document.getElementById('filtroTempo')?.value || 'tudo';
+            const agora = new Date();
+
+            const filtradas = appData.apostas.filter(a => {
+                if (filtro === 'tudo') return true;
+                const da = new Date(a.data);
+                if (filtro === 'mes') return da.getMonth() === agora.getMonth() && da.getFullYear() === agora.getFullYear();
+                if (filtro === 'semana') return (agora - da) / (1000 * 60 * 60 * 24) <= 7;
+                return true;
+            });
+
+            filtradas.forEach(a => {
+                let pl = 0;
+                if (a.resultado === 'win') { 
+                    pl = (a.stake * a.odd) - a.stake; winsCount++; 
+                }
+                else if (a.resultado === 'half-win') {
+                    pl = ((a.stake * a.odd) - a.stake) / 2; winsCount += 0.5;
+                }
+                else if (a.resultado === 'half-loss') {
+                    pl = - (a.stake / 2); lossCount += 0.5;
+                }
+                else if (a.resultado === 'loss') { 
+                    pl = -a.stake; lossCount++; 
+                }
+                lucroBruto += pl;
+                volume += a.stake;
+                porEsporte[a.desporto] = (porEsporte[a.desporto] || 0) + 1;
+            });
+
+            if (appData.apostas.length > 0) {
+                const ultimas = [...appData.apostas].reverse();
+                currentType = ultimas[0].resultado;
+                for(let a of ultimas) {
+                    if(a.resultado === currentType && a.resultado !== 'void') streak++;
+                    else break;
+                }
+            }
+
+            const bancaAtual = appData.bancaInicial + appData.ajustesCaixa + lucroBruto;
+            return { bancaAtual, lucroBruto, winsCount, lossCount, volume, porEsporte, streak, currentType, 
+                     roi: volume > 0 ? (lucroBruto / volume) * 100 : 0, 
+                     winRate: (winsCount + lossCount) > 0 ? (winsCount / (winsCount + lossCount)) * 100 : 0,
+                     progresso: appData.metaLucro > 0 ? (lucroBruto / appData.metaLucro) * 100 : 0 };
+        }
+
+        function renderizarTudo() {
+            const m = calcularMetricas();
+            const fmt = (v) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+
+            document.getElementById('dashBanca').innerText = fmt(m.bancaAtual);
+            document.getElementById('valInicial').innerText = fmt(appData.bancaInicial);
+            
+            let streakIcon = '';
+            if (m.currentType === 'win') streakIcon = '🟢';
+            else if (m.currentType === 'half-win') streakIcon = '✅';
+            else if (m.currentType === 'half-loss') streakIcon = '🟠';
+            else if (m.currentType === 'loss') streakIcon = '🔴';
+            
+            document.getElementById('streakDisplay').innerText = `STREAK: ${m.streak} ${streakIcon}`;
+            document.getElementById('dashLucro').innerText = (m.lucroBruto >= 0 ? '+' : '') + fmt(m.lucroBruto);
+            document.getElementById('dashLucro').className = `text-3xl font-black ${m.lucroBruto >= 0 ? 'text-emerald-600' : 'text-red-600'}`;
+            document.getElementById('metaBar').style.width = Math.min(Math.max(m.progresso, 0), 100) + '%';
+            document.getElementById('metaTexto').innerText = `Meta: ${m.progresso.toFixed(1)}% Concluída`;
+            document.getElementById('dashROI').innerText = `${m.roi.toFixed(1)}%`;
+            document.getElementById('volumeTotal').innerText = `Volume: ${fmt(m.volume)}`;
+            document.getElementById('dashWinRate').innerText = `${m.winRate.toFixed(0)}%`;
+            document.getElementById('dashContagem').innerText = `${m.winsCount} G / ${m.lossCount} R`;
+            document.getElementById('sugestaoStake').innerText = fmt(m.bancaAtual * (appData.riscoPorcentagem / 100));
+            document.getElementById('contadorApostas').innerText = `${appData.apostas.length} OPERAÇÕES`;
+
+            const corpo = document.getElementById('tabelaCorpo'); corpo.innerHTML = '';
+            [...appData.apostas].reverse().slice(0, 20).forEach(a => {
+                let pl = 0; 
+                let statusClass = "status-void";
+                let statusText = "VOID";
+
+                if (a.resultado === 'win') { 
+                    pl = (a.stake * a.odd) - a.stake; statusClass = "status-green"; statusText = "GREEN";
+                }
+                else if (a.resultado === 'half-win') {
+                    pl = ((a.stake * a.odd) - a.stake) / 2; statusClass = "status-half-green"; statusText = "MEIO G";
+                }
+                else if (a.resultado === 'half-loss') {
+                    pl = - (a.stake / 2); statusClass = "status-half-red"; statusText = "MEIO R";
+                }
+                else if (a.resultado === 'loss') { 
+                    pl = -a.stake; statusClass = "status-red"; statusText = "RED";
+                }
+
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td class="p-5">
+                        <div class="font-bold text-slate-800">${a.evento}</div>
+                        <div class="text-[9px] text-emerald-500 font-black uppercase tracking-wider">${a.mercado}</div>
+                    </td>
+                    <td class="p-5 font-mono font-bold text-slate-500">${a.odd.toFixed(2)}</td>
+                    <td class="p-5 text-slate-500 font-bold">${fmt(a.stake)}</td>
+                    <td class="p-5 text-center font-black ${pl >= 0 ? (pl > 0 ? 'text-emerald-500' : 'text-slate-400') : 'text-red-500'}">
+                        ${pl === 0 ? '0.00' : (pl > 0 ? '+' : '') + pl.toFixed(2)}
+                    </td>
+                    <td class="p-5"><span class="${statusClass}">${statusText}</span></td>
+                    <td class="p-5 text-right"><button onclick="excluirAposta(${a.id})" class="text-slate-200 hover:text-red-400"><i class="fa-solid fa-trash-can"></i></button></td>
+                `;
+                corpo.appendChild(tr);
+            });
+            atualizarGraficos(m);
+        }
+
+        function atualizarGraficos(m) {
+            const ctxBanca = document.getElementById('graficoBanca').getContext('2d');
+            let saldo = appData.bancaInicial + appData.ajustesCaixa;
+            let hist = [saldo];
+            appData.apostas.forEach(a => {
+                if (a.resultado === 'win') saldo += (a.stake * a.odd) - a.stake;
+                else if (a.resultado === 'half-win') saldo += ((a.stake * a.odd) - a.stake) / 2;
+                else if (a.resultado === 'half-loss') saldo -= (a.stake / 2);
+                else if (a.resultado === 'loss') saldo -= a.stake;
+                hist.push(saldo);
+            });
+
+            if (chartBanca) chartBanca.destroy();
+            chartBanca = new Chart(ctxBanca, {
+                type: 'line',
+                data: {
+                    labels: hist.map((_, i) => i),
+                    datasets: [{
+                        data: hist, borderColor: '#10b981', borderWidth: 4, fill: true,
+                        backgroundColor: 'rgba(16, 185, 129, 0.05)', tension: 0.3, pointRadius: 0
+                    }]
+                },
+                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { display: false } } }
+            });
+
+            const ctxPizza = document.getElementById('graficoPizza').getContext('2d');
+            if (chartPizza) chartPizza.destroy();
+            chartPizza = new Chart(ctxPizza, {
+                type: 'doughnut',
+                data: {
+                    labels: Object.keys(m.porEsporte),
+                    datasets: [{ data: Object.values(m.porEsporte), backgroundColor: ['#10b981', '#6366f1', '#f59e0b', '#ec4899', '#ef4444'], borderWidth: 0 }]
+                },
+                options: { responsive: true, maintainAspectRatio: false, cutout: '70%', plugins: { legend: { position: 'bottom', labels: { boxWidth: 10, font: { size: 10, weight: 'bold' } } } } }
+            });
+        }
+
+        function calcularDutching() {
+            const stake = parseFloat(document.getElementById('calcStakeTotal').value);
+            const o1 = parseFloat(document.getElementById('calcOdd1').value);
+            const o2 = parseFloat(document.getElementById('calcOdd2').value);
+            if (!stake || !o1 || !o2) return;
+            const inv1 = (1/o1); const inv2 = (1/o2); const totalInv = inv1 + inv2;
+            const s1 = (inv1 / totalInv) * stake; const s2 = (inv2 / totalInv) * stake;
+            const res = document.getElementById('resDutching'); res.classList.remove('hidden');
+            res.innerHTML = `<p>Odd 1: <span class="text-emerald-600">R$ ${s1.toFixed(2)}</span></p><p>Odd 2: <span class="text-emerald-600">R$ ${s2.toFixed(2)}</span></p>`;
+        }
+
+        function exportarDados() {
+            const blob = new Blob([JSON.stringify(appData, null, 2)], {type: 'application/json'});
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a'); a.href = url; a.download = `banca_ultra_v4_2.json`; a.click();
+        }
+
+        function resetarSistema() {
+            if (confirm('Apagar todos os dados? Isso limpará o histórico e as configurações.')) { 
+                localStorage.removeItem('bankroll_br_v4_2_ultra'); 
+                location.reload(); 
+            }
+        }
+    </script>
+</body>
+</html>
+
